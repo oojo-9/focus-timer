@@ -7,7 +7,7 @@ async function finish(success) {
   onReturn();
   S.done = true; S.success = success;
   S.endAt = new Date();
-  S.elapsed = Math.min(S.target, S.endAt - S.start);
+  S.elapsed = S.untilEnd ? S.endAt - S.start : Math.min(S.target, S.endAt - S.start);
   clearInterval(S.tick); clearInterval(S.tlTimer); clearInterval(S.anTimer);
   closeRun(S.elapsed);
 
@@ -55,12 +55,12 @@ async function makeCapture() {
   // 하단 띠: 완료 여부 + 정확한 시각 (시계는 띠 위 영역에 그림)
   const bh = U * 0.16;
   ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, H);
-  drawClock(ctx, W, H - bh, { ...cfgDisplay(), elapsed: S.elapsed, target: S.target, now: S.endAt.getTime() });
+  drawClock(ctx, W, H - bh, { ...cfgDisplay(), elapsed: S.elapsed, target: S.target, now: S.endAt.getTime(), untilEnd: S.untilEnd });
   ctx.fillStyle = rgba(th.fg, 0.08); ctx.fillRect(0, H - bh, W, bh);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = S.success ? th.accent : '#ff6b6b';
   ctx.font = `700 ${U * 0.04}px ${F}`;
-  ctx.fillText(S.success ? '✓ 목표 달성' : `중단 (${fmtDur(S.elapsed)} / ${fmtDur(S.target)})`, W / 2, H - bh * 0.68);
+  ctx.fillText(S.success ? (S.untilEnd ? '✓ 강의 완주' : '✓ 목표 달성') : `중단 (${fmtDur(S.elapsed)} / ${fmtDur(S.target)})`, W / 2, H - bh * 0.68);
   ctx.fillStyle = th.fg; ctx.font = `400 ${U * 0.034}px ${F}`;
   ctx.fillText(`${S.success ? '완료' : '중단'} 시각  ${stampStr(S.endAt)}`, W / 2, H - bh * 0.3);
   return new Promise(r => cv.toBlob(r, 'image/png'));
@@ -125,14 +125,16 @@ function renderReport() {
   }
   const drowsyMin = B.findIndex(b => b.perclos != null && b.perclos > 0.15);
 
-  $('#resTitle').textContent = `${S.success ? '목표 달성' : '중단'} · ${stampStr(S.endAt)}${S.lecture ? ' · ' + S.lecture : ''}`;
+  $('#resTitle').textContent = `${S.success ? (S.untilEnd ? '강의 완주' : '목표 달성') : '중단'} · ${stampStr(S.endAt)}${S.lecture ? ' · ' + S.lecture : ''}`;
   $('#resScore').textContent = Math.round(score * 100) + '%';
   $('#resScoreLabel').textContent = hasCam ? '집중도 (카메라 분석 + 화면 유지)' : '화면 유지율 (카메라 분석 없음)';
 
   const stat = (k, v) => `<div class="stat"><span class="muted">${k}</span><b>${v}</b></div>`;
   $('#resStats').innerHTML = [
     stat('진행 시간', fmtDur(S.elapsed, true, true)),
-    stat('목표', fmtDur(S.target, true, true)),
+    S.untilEnd ? stat('예상 (영상 길이)', fmtDur(S.target, true, true)
+      + (S.elapsed > S.target + 1000 ? ` <small class="muted">+${fmtDur(S.elapsed - S.target)}</small>` : ''))
+      : stat('목표', fmtDur(S.target, true, true)),
     stat('최장 연속 집중', fmtDur(longest)),
     stat('이탈 횟수', evs.filter(e => e.type !== 'fs').length + '회'),
     stat('이탈 시간 합계', fmtDur(lost)),

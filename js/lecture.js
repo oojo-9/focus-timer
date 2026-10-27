@@ -72,17 +72,22 @@ async function youTubeLength(id) {
       if (d > 0) ytLenCache[id] = d;
       res(d > 0 ? d : 0);
     };
-    const to = setTimeout(() => done(0), 12000);
+    const to = setTimeout(() => done(0), 20000);
     p = new YT.Player(host, { videoId: id, width: 200, height: 120, playerVars: { autoplay: 0, mute: 1 },
       events: {
         onReady: e => {
-          const pl = e.target; let n = 0;
+          const pl = e.target; let n = 0, last = 0, same = 0;
           const poll = () => {
             if (finished) return;
             const d = pl.getDuration();
-            if (d > 0) return done(d);
+            if (n < 8 && d > 0) return done(d);   // 재생 전에 읽은 길이는 광고와 상관없음
             if (++n === 8) { pl.mute(); pl.playVideo(); }   // 일부 영상은 재생을 시작해야 길이가 나옴
-            if (n < 40) setTimeout(poll, 250); else done(0);
+            // 재생을 시작한 뒤에는 처음 광고 길이가 섞일 수 있어서, 본 영상이 재생 중이고 길이가 2초 동안 같을 때만 믿음
+            if (n > 8 && d > 0 && pl.getPlayerState() === 1) {
+              same = Math.abs(d - last) < 0.5 ? same + 1 : 0; last = d;
+              if (same >= 8) return done(d);
+            }
+            if (n < 60) setTimeout(poll, 250); else done(0);
           };
           poll();
         },
@@ -120,6 +125,7 @@ async function updateLectureUI() {
   lectureLen = 0;
   $('#lectureOn').checked = !!cfg.lectureOn;
   $('#lectureMatch').checked = !!cfg.lectureMatch;
+  $('#lectureEnd').checked = !!cfg.lectureEnd;
   document.querySelectorAll('input[name=lsrc]').forEach(r => r.checked = r.value === cfg.lectureSrc);
   $('#lectureOpts').style.display = cfg.lectureOn ? '' : 'none';
   $('#lsYoutube').style.display = cfg.lectureSrc === 'youtube' ? '' : 'none';
@@ -175,25 +181,64 @@ document.querySelectorAll('input[name=lsrc]').forEach(r =>
   r.addEventListener('change', () => { cfg.lectureSrc = r.value; save(); updateLectureUI(); }));
 $('#ytUrl').addEventListener('input', e => { cfg.ytUrl = e.target.value.trim(); save(); updateLectureUI(); });
 $('#lectureMatch').addEventListener('change', e => { cfg.lectureMatch = e.target.checked; save(); updateLectureUI(); });
+$('#lectureEnd').addEventListener('change', e => { cfg.lectureEnd = e.target.checked; save(); });
 $('#lecFile').addEventListener('change', e => { lectureFiles = [...e.target.files]; updateLectureUI(); });
 
 /* ---- 진행 화면 ---- */
-let lectureUrl = null;
+let lectureUrl = null, ytPlayer = null, lectureToken = 0;
+// "영상이 끝나면 타이머도 끝내기": 마지막 영상이 끝나면 세션을 완료로 끝냄
+function onLectureEnded() {
+  if (S && !S.done && S.untilEnd) { toast('강의가 끝났어요'); finish(true); }
+}
+// 영상 끝을 알 수 없게 되면 목표 시간 기준으로 되돌림
+function lectureEndUnavailable(msg) {
+  if (!S || S.done || !S.untilEnd) return;
+  S.untilEnd = false;
+  if (Date.now() - S.start >= S.target) finish(true);
+  else toast(msg + ' → 목표 시간에 끝나요');
+}
 function startLecture() {
   const box = $('#lecture'); box.innerHTML = '';
+  const token = ++lectureToken;
   if (!cfg.lectureOn) return;
   if (cfg.lectureSrc === 'youtube') {
-    const f = document.createElement('iframe');
-    f.src = youTubeEmbed(parseYouTube(cfg.ytUrl));
-    f.allow = 'autoplay; encrypted-media; picture-in-picture';   // 영상 자체 전체화면은 막음 (집중 화면 잠금 유지)
-    f.referrerPolicy = 'strict-origin-when-cross-origin';
-    box.appendChild(f);
+    const y = parseYouTube(cfg.ytUrl);
+    // 플레이어 API로 재생해야 영상이 끝난 걸 알 수 있음. API를 못 불러오면 그냥 영상만 띄움
+    const fallback = () => {
+      if (token !== lectureToken || box.querySelector('iframe')) return;
+      const f = document.createElement('iframe');
+      f.src = youTubeEmbed(y);
+      f.allow = 'autoplay; encrypted-media; picture-in-picture';   // 영상 자체 전체화면은 막음 (집중 화면 잠금 유지)
+      f.referrerPolicy = 'strict-origin-when-cross-origin';
+      box.appendChild(f);
+      lectureEndUnavailable('영상 끝을 확인할 수 없어요');
+    };
+    const to = setTimeout(fallback, 8000);
+    loadYTApi().then(YT => {
+      if (token !== lectureToken || box.querySelector('iframe')) return;
+      clearTimeout(to);
+      const host = document.createElement('div'); box.appendChild(host);
+      const vars = { autoplay: 1, rel: 0, playsinline: 1, fs: 0, origin: location.origin };   // fs:0 = 영상 자체 전체화면 버튼 숨김
+      if (y.start) vars.start = y.start;
+      if (y.list) { vars.list = y.list; vars.listType = 'playlist'; }
+      ytPlayer = new YT.Player(host, { ...(y.id ? { videoId: y.id } : {}), playerVars: vars,
+        events: {
+          onReady: e => e.target.playVideo(),
+          onStateChange: e => {
+            if (e.data !== YT.PlayerState.ENDED) return;
+            const list = e.target.getPlaylist?.();
+            // 재생목록이면 마지막 영상이 끝났을 때만
+            if (!list || !list.length || e.target.getPlaylistIndex() >= list.length - 1) onLectureEnded();
+          },
+          onError: () => lectureEndUnavailable('유튜브 영상을 재생할 수 없어요'),
+        } });
+    }).catch(fallback);
   } else {
     lectureIdx = 0;
     const v = document.createElement('video');
     v.controls = true; v.playsInline = true; v.autoplay = true;
     v.setAttribute('controlsList', 'nofullscreen nodownload');
-    v.onended = () => { if (lectureIdx < lectureFiles.length - 1) { lectureIdx++; playLectureFile(v); } };
+    v.onended = () => { if (lectureIdx < lectureFiles.length - 1) { lectureIdx++; playLectureFile(v); } else onLectureEnded(); };
     box.appendChild(v);
     playLectureFile(v);
   }
@@ -207,6 +252,8 @@ function playLectureFile(v) {
 }
 function stopLecture() {
   const box = $('#lecture');
+  lectureToken++;
+  try { ytPlayer?.destroy(); } catch {} ytPlayer = null;
   box.querySelector('video')?.pause();
   box.innerHTML = '';   // iframe을 없애야 유튜브 재생도 멈춤
   if (lectureUrl) { URL.revokeObjectURL(lectureUrl); lectureUrl = null; }

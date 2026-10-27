@@ -20,7 +20,7 @@ const FONTS = {
 const DEFAULTS = { theme:'classic', ...THEMES.classic, font:'mono', style:'digital', countMode:'up',
   showSeconds:true, showClock:true, h:0, m:25, s:0,
   autoCapture:true, camera:false, focus:false, showPreview:true, vibrate:true, sound:false,
-  lectureOn:false, lectureSrc:'youtube', ytUrl:'', lectureMatch:false };
+  lectureOn:false, lectureSrc:'youtube', ytUrl:'', lectureMatch:false, lectureEnd:false };
 const STORE = 'focus-timer-cfg-v1';
 let cfg = { ...DEFAULTS };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch {}

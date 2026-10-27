@@ -28,7 +28,8 @@ $('#startBtn').onclick = async () => {
   if ((cfg.camera || cfg.focus) && !stream) await updateCamera();
 
   S = { start: Date.now(), target, events: [], samples: [], frames: [], cal: [], base: null,
-        run: null, leftAt: null, armedAt: Date.now() + 1500, done: false, lecture: lectureLabel() };
+        run: null, leftAt: null, armedAt: Date.now() + 1500, done: false, lecture: lectureLabel(),
+        untilEnd: !!(cfg.lectureOn && cfg.lectureEnd) };   // true면 목표 시간이 아니라 강의가 끝날 때 종료
   document.body.className = 'running' + (stream ? ' camon' : '') + (cfg.showPreview ? '' : ' nopreview')
     + (cfg.lectureOn ? ' lecture' : '');
   startLecture();
@@ -54,14 +55,14 @@ $('#startBtn').onclick = async () => {
 
 function tick() {
   if (!S || S.done) return;
-  const elapsed = Math.min(S.target, Date.now() - S.start);
+  const elapsed = S.untilEnd ? Date.now() - S.start : Math.min(S.target, Date.now() - S.start);
   sizeCanvas(clockCv);
   drawClock(clockCv.getContext('2d'), clockCv.width, clockCv.height,
-    { ...cfgDisplay(), elapsed, target: S.target, now: Date.now() });
+    { ...cfgDisplay(), elapsed, target: S.target, now: Date.now(), untilEnd: S.untilEnd });
   // 창 포커스 확인: 강의(iframe)를 클릭해도 같은 창 안이라 hasFocus()는 true → 이탈 아님
   if (document.hidden || !document.hasFocus()) onLeave(document.hidden ? '다른 앱/탭으로 이동' : '다른 창 클릭 / 알림 확인');
   else onReturn();
-  if (elapsed >= S.target) finish(true);
+  if (!S.untilEnd && elapsed >= S.target) finish(true);
 }
 
 /* ---- 이탈 감지: 다른 앱/탭, 창 포커스 잃음(알림 클릭 등), 전체화면 해제 ---- */
@@ -72,7 +73,7 @@ function onLeave(kind) {
 function onReturn() {
   if (!S || S.leftAt == null) return;
   const a = S.leftAt - S.start, b = Date.now() - S.start;
-  if (b - a >= 500) S.events.push({ type: 'left', start: a, end: Math.min(b, S.target), detail: S.leftKind });
+  if (b - a >= 500) S.events.push({ type: 'left', start: a, end: S.untilEnd ? b : Math.min(b, S.target), detail: S.leftKind });
   S.leftAt = null;
 }
 document.addEventListener('visibilitychange', () => {

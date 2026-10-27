@@ -6,9 +6,10 @@ function drawClock(ctx, W, H, st) {
   const th = st.theme, F = FONTS[st.font] || FONTS.mono;
   const U = Math.min(W, H);
   const prog = st.target ? Math.min(1, st.elapsed / st.target) : 0;
-  const shown = st.countMode === 'down' ? st.target - st.elapsed : st.elapsed;
-  const forceH = st.target >= 3600000;
-  const main = fmtDur(shown, st.showSeconds, forceH);
+  const over = Math.max(0, st.elapsed - st.target);   // "영상이 끝나면 끝내기"에서 목표를 넘긴 시간
+  const shown = st.countMode === 'down' ? Math.max(0, st.target - st.elapsed) : st.elapsed;
+  const forceH = Math.max(st.target, st.elapsed) >= 3600000;
+  const main = (over >= 1000 && st.countMode === 'down' ? '+' + fmtDur(over, st.showSeconds) : fmtDur(shown, st.showSeconds, forceH));
   const now = new Date(st.now);
 
   ctx.save();
@@ -21,7 +22,9 @@ function drawClock(ctx, W, H, st) {
     ctx.font = `${weight} ${size}px ${F}`;
     return size;
   };
-  const label = `목표 ${fmtDur(st.target, true, forceH)} · ${Math.floor(prog * 100)}%`;
+  const label = st.untilEnd
+    ? `예상 ${fmtDur(st.target, true, forceH)} · ${over >= 1000 ? '+' + fmtDur(over) + ' 연장' : Math.floor(prog * 100) + '%'}`
+    : `목표 ${fmtDur(st.target, true, forceH)} · ${Math.floor(prog * 100)}%`;
 
   if (st.showClock) {
     ctx.fillStyle = th.sub;
