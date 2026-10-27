@@ -2,6 +2,8 @@
 
 집중 타이머 웹앱 (PC 웹 기준). HTML + CSS + JavaScript로 만들었고, 서버 프로그램 없이 브라우저에서 바로 동작합니다.
 
+저장소: https://github.com/oojo-9/focus-timer
+
 ## 폴더 구조
 ```
 focus-timer/
@@ -23,6 +25,7 @@ focus-timer/
 │  └─ main.js          공통 단축키·커서, 초기화 (마지막에 로드)
 ├─ changelog/
 │  └─ changelog.md     수정내역
+├─ .gitignore          GitHub에 안 올릴 파일 목록
 └─ README.md
 ```
 - 고치고 싶은 기능이 있으면 위 표에서 해당 파일만 열면 됩니다. 예: 시계 모양 → `clock.js`, 리포트 문구 → `report.js`
@@ -56,6 +59,20 @@ npx serve -l 8765
 ```
 
 종료는 터미널에서 `Ctrl + C`.
+
+### 다른 PC에서 받기 / 수정한 내용 올리기
+```bash
+git clone https://github.com/oojo-9/focus-timer.git
+```
+```bash
+git add -A
+```
+```bash
+git commit -m "수정 내용"
+```
+```bash
+git push
+```
 
 ## 사용 방법
 
