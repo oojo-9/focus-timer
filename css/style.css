@@ -1,0 +1,102 @@
+:root { --bg:#0b0b0c; --card:#151517; --line:#2a2a2e; --text:#f2f2f2; --sub:#9a9aa2; --accent:#ffffff; }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
+  font-family:"Noto Sans KR",system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
+section { display:none; }
+body.setup #setup, body.running #run, body.result #result { display:block; }
+button { font:inherit; cursor:pointer; }
+
+/* ---------- 설정 화면 ---------- */
+#setup { max-width:1180px; margin:0 auto; padding:24px 16px 48px; }
+.layout { display:grid; grid-template-columns:1fr; gap:0 18px; }
+@media (min-width:960px) {
+  .layout { grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); align-items:start; }
+  .col-left { position:sticky; top:12px; }
+}
+body.running.idle, body.running.idle * { cursor:none; }
+h1 { font-size:22px; margin:0 0 4px; }
+.muted { color:var(--sub); font-size:13px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:14px; }
+.card h2 { font-size:15px; margin:0 0 12px; }
+#previewCanvas { width:100%; aspect-ratio:16/9; border-radius:10px; display:block; border:1px solid var(--line); }
+.dur { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.dur input { width:72px; padding:10px; font-size:20px; text-align:center; background:#0e0e10; color:var(--text);
+  border:1px solid var(--line); border-radius:10px; font-family:"JetBrains Mono",monospace; }
+.chip { padding:8px 12px; border-radius:999px; border:1px solid var(--line); background:#0e0e10; color:var(--text); font-size:13px; }
+.chip:hover { border-color:#555; }
+.row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+.row label { font-size:14px; }
+select { padding:8px 10px; background:#0e0e10; color:var(--text); border:1px solid var(--line); border-radius:8px; font:inherit; font-size:14px; }
+input[type=color] { width:40px; height:32px; border:1px solid var(--line); border-radius:8px; background:none; padding:2px; }
+.swatches { display:flex; gap:8px; flex-wrap:wrap; }
+.swatch { width:44px; height:44px; border-radius:10px; border:2px solid var(--line); display:grid; place-items:center;
+  font:700 14px "JetBrains Mono",monospace; }
+.swatch.on { border-color:#fff; }
+.check { display:flex; gap:10px; align-items:flex-start; padding:8px 0; font-size:14px; }
+.check input { width:18px; height:18px; margin-top:2px; flex:none; }
+.check small { display:block; color:var(--sub); font-size:12px; margin-top:2px; }
+#camStatus { font-size:12px; color:var(--sub); margin-top:4px; }
+#startBtn { width:100%; margin-top:18px; padding:16px; font-size:18px; font-weight:700; border:0; border-radius:14px; background:#fff; color:#000; }
+details { margin-top:14px; }
+details summary { cursor:pointer; color:var(--sub); font-size:14px; }
+details ul { padding-left:18px; font-size:13px; color:#c8c8cc; line-height:1.7; }
+
+/* ---------- 진행 화면 ---------- */
+#run { position:fixed; inset:0; }
+#clock { position:absolute; inset:0; width:100%; height:100%; display:block; }
+#giveup { position:absolute; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+  padding:10px 18px; border-radius:999px; border:1px solid rgba(128,128,128,.4); background:transparent; color:rgba(160,160,160,.8);
+  font-size:13px; overflow:hidden; user-select:none; -webkit-user-select:none; touch-action:none; }
+#giveup .fill { position:absolute; inset:0; width:0; background:rgba(255,80,80,.35); }
+#giveup span { position:relative; }
+#runStatus { position:absolute; top:calc(10px + env(safe-area-inset-top)); left:12px; font-size:11px; color:rgba(150,150,150,.7); }
+#toast { position:absolute; top:20%; left:50%; transform:translateX(-50%); background:rgba(30,30,30,.92); color:#fff;
+  padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; text-align:center; }
+#relock { position:absolute; inset:0; background:rgba(0,0,0,.85); display:none; place-items:center; text-align:center; padding:16px; }
+#relock.on { display:grid; }
+#relock button { margin-top:14px; padding:14px 22px; border:0; border-radius:12px; background:#fff; color:#000; font-weight:700; font-size:16px; }
+
+/* 카메라 미리보기 (하나의 video 요소를 상태에 따라 배치) */
+#cam { position:fixed; right:12px; bottom:12px; width:120px; border-radius:10px; transform:scaleX(-1);
+  border:1px solid rgba(128,128,128,.4); display:none; z-index:5; background:#000; }
+body.camon #cam { display:block; }
+body.running.nopreview #cam { opacity:.01; width:2px; }
+body.result #cam { display:none; }
+
+/* ---------- 결과 화면 ---------- */
+#result { max-width:820px; margin:0 auto; padding:24px 16px 64px; }
+.big { font:800 56px "JetBrains Mono",monospace; line-height:1; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+.stat { background:#0e0e10; border:1px solid var(--line); border-radius:10px; padding:12px; }
+.stat b { display:block; font:700 20px "JetBrains Mono",monospace; margin-top:4px; }
+#captureImg, #tlVideo { width:100%; border-radius:10px; border:1px solid var(--line); display:block; }
+.timeline { display:flex; gap:2px; height:56px; align-items:flex-end; margin-top:8px; }
+.timeline div { flex:1; min-width:2px; border-radius:2px 2px 0 0; position:relative; }
+.tlaxis { display:flex; justify-content:space-between; font-size:11px; color:var(--sub); margin-top:4px; font-family:"JetBrains Mono",monospace; }
+.events { list-style:none; padding:0; margin:0; font-size:14px; }
+.events li { display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
+.events time { font-family:"JetBrains Mono",monospace; color:var(--sub); flex:none; width:110px; }
+.insight { font-size:15px; line-height:1.7; }
+.btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.btn { padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:#0e0e10; color:var(--text); font-size:14px; text-decoration:none; }
+.btn.primary { background:#fff; color:#000; border-color:#fff; font-weight:700; }
+.bar { height:6px; background:#222; border-radius:3px; overflow:hidden; margin-top:8px; }
+.bar i { display:block; height:100%; width:0; background:#fff; }
+.ref { font-size:12px; color:var(--sub); line-height:1.7; }
+
+/* ---------- 강의 모드: 왼쪽 강의, 오른쪽 타이머 ---------- */
+.text { width:100%; padding:10px 12px; background:#0e0e10; color:var(--text); border:1px solid var(--line); border-radius:10px; font:inherit; font-size:14px; }
+input[type=file] { font-size:13px; color:var(--sub); }
+#lecture { display:none; }
+body.running.lecture #run { display:grid; grid-template-columns:minmax(0,1fr) 280px; }
+body.running.lecture #lecture { display:block; position:relative; background:#000; min-height:0; }
+#lecture iframe, #lecture video { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; }
+body.running.lecture #clock { position:relative; inset:auto; }
+body.running.lecture #giveup { left:auto; right:140px; transform:translateX(50%); }
+body.running.lecture #runStatus { left:auto; right:12px; }
+body.running.lecture #cam { right:80px; bottom:72px; }
+@media (max-width:900px) {
+  body.running.lecture #run { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) 180px; }
+  body.running.lecture #giveup { right:50%; }
+  body.running.lecture #cam { right:12px; bottom:12px; width:90px; }
+}

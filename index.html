@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Focus Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="setup">
+
+<!-- ======================= 설정 ======================= -->
+<section id="setup">
+  <h1>Focus Timer</h1>
+  <div class="muted">목표 시간을 정하고 시작하면, 끝날 때까지 이 화면만 남습니다.</div>
+  <div id="mobileNote" class="muted" style="display:none;margin-top:6px;color:#ffb000">
+    지금은 PC 웹 기준 버전이에요. 모바일에서는 전체화면·카메라 등 일부 기능이 제한될 수 있어요 (모바일 고도화 예정).</div>
+
+  <div class="layout">
+  <div class="col-left">
+  <div class="card">
+    <h2>미리보기</h2>
+    <canvas id="previewCanvas"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>시작 전 체크</h2>
+    <label class="check"><input type="checkbox" class="pre"><span>음악 켜두기<small>다른 탭/앱에서 재생하면 집중 중에도 계속 나와요</small></span></label>
+    <label class="check"><input type="checkbox" class="pre"><span>Windows 방해 금지 켜기<small>작업표시줄 시계 클릭(Win+N) → 방해 금지. 웹은 OS 알림을 막을 수 없어요</small></span></label>
+    <label class="check"><input type="checkbox" class="pre"><span>휴대폰 멀리 두기</span></label>
+    <button id="startBtn">집중 시작 <span style="font-weight:400;font-size:13px;opacity:.6">Enter</span></button>
+    <div class="muted" style="margin-top:8px;font-size:12px">시작하면 전체화면이 되고, 빠져나오려면 Esc를 길게 눌러야 해요. 다른 창으로 가면 이탈로 기록돼요.</div>
+  </div>
+
+  <div class="card" id="histCard" style="display:none">
+    <h2>최근 기록</h2>
+    <div id="histSummary" class="insight" style="font-size:14px"></div>
+    <ul class="events" id="histList"></ul>
+    <div class="btns"><button class="btn" id="histClear">기록 지우기</button></div>
+  </div>
+  </div>
+
+  <div class="col-right">
+  <div class="card">
+    <h2>목표 시간</h2>
+    <div class="dur">
+      <input id="dh" type="number" min="0" max="23" inputmode="numeric"> 시간
+      <input id="dm" type="number" min="0" max="59" inputmode="numeric"> 분
+      <input id="ds" type="number" min="0" max="59" inputmode="numeric"> 초
+    </div>
+    <div class="row">
+      <button class="chip" data-min="25">25분</button>
+      <button class="chip" data-min="50">50분</button>
+      <button class="chip" data-min="90">90분</button>
+      <button class="chip" data-min="120">2시간</button>
+    </div>
+    <div class="row">
+      <label>표시 방식
+        <select id="countMode">
+          <option value="up">스탑워치 (0부터 올라감)</option>
+          <option value="down">남은 시간 (내려감)</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>시계 꾸미기</h2>
+    <div class="swatches" id="swatches"></div>
+    <div class="row">
+      <label>모양 <select id="style">
+        <option value="digital">디지털</option>
+        <option value="ring">링 (진행률)</option>
+        <option value="analog">아날로그</option>
+      </select></label>
+      <label>글꼴 <select id="font">
+        <option value="mono">모노</option>
+        <option value="digital">디지털</option>
+        <option value="sans">고딕</option>
+        <option value="serif">명조</option>
+      </select></label>
+    </div>
+    <div class="row">
+      <label>배경 <input type="color" id="cBg"></label>
+      <label>숫자 <input type="color" id="cFg"></label>
+      <label>강조 <input type="color" id="cAccent"></label>
+      <label>보조 <input type="color" id="cSub"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="showSeconds"> 초 표시</label>
+    <label class="check"><input type="checkbox" id="showClock"> 현재 시각/날짜 함께 표시</label>
+  </div>
+
+  <div class="card">
+    <h2>강의 함께 보기</h2>
+    <label class="check"><input type="checkbox" id="lectureOn">
+      <span>집중 화면 안에서 강의 틀기<small>강의가 화면 대부분을 채우고, 타이머는 오른쪽에 작게 표시돼요. 강의를 클릭해도 이탈로 기록되지 않아요</small></span></label>
+    <div id="lectureOpts">
+      <div class="row">
+        <label><input type="radio" name="lsrc" value="youtube"> 유튜브 링크</label>
+        <label><input type="radio" name="lsrc" value="file"> 내 PC 영상 파일</label>
+      </div>
+      <div id="lsYoutube"><input id="ytUrl" class="text" type="url" placeholder="https://www.youtube.com/watch?v=..."></div>
+      <div id="lsFile"><input id="lecFile" type="file" accept="video/*" multiple></div>
+      <div id="lectureStatus" class="muted" style="margin-top:8px"></div>
+      <label class="check"><input type="checkbox" id="lectureMatch">
+        <span>목표 시간을 강의 길이에 자동으로 맞추기<small>영상을 고르면 목표 시간이 영상이 끝나는 시간으로 바로 설정돼요. 일시정지하거나 배속으로 보면 실제로 끝나는 시간과 차이가 생길 수 있어요</small></span></label>
+      <div class="muted" style="margin-top:6px;font-size:12px">인프런·패스트캠퍼스 같은 유료 강의 사이트는 다른 사이트 안에 띄우는 걸 막아둬서 여기서는 재생할 수 없어요.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>옵션</h2>
+    <label class="check"><input type="checkbox" id="autoCapture">
+      <span>완료 시 화면 자동 캡처<small>완료 시각(날짜·시:분:초)이 찍힌 이미지를 자동 저장</small></span></label>
+    <label class="check"><input type="checkbox" id="camera">
+      <span>카메라 타임랩스<small>진행 시간 동안 자동 촬영 → 끝나면 약 20초짜리 영상으로 압축</small></span></label>
+    <label class="check"><input type="checkbox" id="focus">
+      <span>집중도 분석 (카메라)<small>얼굴·시선·눈 감김을 기기 안에서만 분석. 영상은 어디에도 전송되지 않음</small></span></label>
+    <label class="check"><input type="checkbox" id="showPreview">
+      <span>진행 중 카메라 미리보기 표시</span></label>
+    <div id="camStatus"></div>
+    <label class="check"><input type="checkbox" id="vibrate">
+      <span>완료 시 진동 (안드로이드)</span></label>
+    <label class="check"><input type="checkbox" id="sound">
+      <span>완료 시 알림음<small>켜면 듣던 음악이 잠깐 작아질 수 있어 기본은 꺼둠</small></span></label>
+  </div>
+
+  <details>
+    <summary>모바일에서 쓸 때 (고도화 예정 · 임시 방법)</summary>
+    <ul>
+      <li><b>iPhone</b>: 공유 → 홈 화면에 추가 → 설정 &gt; 손쉬운 사용 &gt; <b>사용법 유도</b> 켜고 측면 버튼 3번.</li>
+      <li><b>Android</b>: 설정 &gt; 보안 &gt; <b>앱 고정</b>으로 이 화면 고정, 방해금지는 빠른 설정에서.</li>
+    </ul>
+  </details>
+  </div>
+  </div>
+</section>
+
+<!-- ======================= 진행 ======================= -->
+<section id="run">
+  <div id="lecture"></div>
+  <canvas id="clock"></canvas>
+  <div id="runStatus"></div>
+  <div id="toast"></div>
+  <button id="giveup"><div class="fill"></div><span>3초 길게 눌러 포기</span></button>
+  <div id="relock">
+    <div>
+      <div style="font-size:18px;font-weight:700">집중 모드가 해제됐어요</div>
+      <div class="muted" style="margin-top:6px">이탈한 시간은 기록됩니다.</div>
+      <button id="relockBtn">다시 집중 모드로</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 결과 ======================= -->
+<section id="result">
+  <div class="muted" id="resTitle"></div>
+  <div class="row" style="align-items:flex-end;gap:16px">
+    <div class="big" id="resScore">–</div>
+    <div class="muted" id="resScoreLabel" style="padding-bottom:6px"></div>
+  </div>
+
+  <div class="card">
+    <h2>완료 캡처</h2>
+    <img id="captureImg" alt="완료 화면 캡처">
+    <div class="btns">
+      <a class="btn primary" id="capDownload">이미지 저장</a>
+      <button class="btn" id="capShare">공유하기</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>요약</h2>
+    <div class="grid" id="resStats"></div>
+  </div>
+
+  <div class="card">
+    <h2>분 단위 집중도</h2>
+    <div class="timeline" id="resTimeline"></div>
+    <div class="tlaxis" id="resAxis"></div>
+    <div class="muted" style="margin-top:8px">막대 높이 = 그 1분 동안 집중 상태였던 비율. 빨간색일수록 낮음.</div>
+  </div>
+
+  <div class="card">
+    <h2>언제 집중이 깨졌나</h2>
+    <div class="insight" id="resInsight"></div>
+    <ul class="events" id="resEvents"></ul>
+  </div>
+
+  <div class="card" id="tlCard" style="display:none">
+    <h2>타임랩스</h2>
+    <div id="tlProgress"><div class="muted">영상 만드는 중…</div><div class="bar"><i id="tlBar"></i></div></div>
+    <video id="tlVideo" controls playsinline style="display:none"></video>
+    <div class="btns"><a class="btn primary" id="tlDownload" style="display:none">영상 저장</a></div>
+  </div>
+
+  <div class="card">
+    <h2>참고한 연구</h2>
+    <div class="ref">
+      · 지속적 주의(vigilance)는 과제 시작 후 30분 이내에 수행 저하가 나타나는 경향 — Mackworth (1948), 이후 다수 재현.<br>
+      · 깨어있는 시간의 약 47%는 하던 일과 다른 생각(마음 방황) — Killingsworth &amp; Gilbert, <i>Science</i> (2010).<br>
+      · 졸음 지표 PERCLOS(일정 시간 중 눈이 감겨 있던 비율) — Wierwille 외(1994), Dinges &amp; Grace (1998, 미 연방도로청).<br>
+      · "주의 지속 시간 10분" 같은 고정 수치는 근거가 약하고 개인차가 큼 — Bradbury (2016), <i>Adv. Physiol. Educ.</i><br>
+      → 그래서 이 앱은 고정된 기준 대신 <b>당신의 첫 저하 시점</b>을 측정해 다음 세션 길이를 제안합니다.
+    </div>
+  </div>
+
+  <button id="againBtn" class="btn primary" style="width:100%;padding:14px;margin-top:16px;font-size:16px">다시 설정하기</button>
+</section>
+
+<video id="cam" playsinline muted autoplay></video>
+
+<script src="js/utils.js"></script>
+<script src="js/config.js"></script>
+<script src="js/clock.js"></script>
+<script src="js/setup.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/lecture.js"></script>
+<script src="js/session.js"></script>
+<script src="js/timelapse.js"></script>
+<script src="js/focus.js"></script>
+<script src="js/report.js"></script>
+<script src="js/history.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
